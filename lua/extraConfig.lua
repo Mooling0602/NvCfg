@@ -23,6 +23,14 @@ local function fix_popup_colors()
   local border_fg = c.line
 
   for _, group in ipairs({
+    "DmsFloatBackdrop",
+    "LazyBackdrop",
+    "MasonBackdrop",
+  }) do
+    vim.api.nvim_set_hl(0, group, { bg = "#000000" })
+  end
+
+  for _, group in ipairs({
     "NormalFloat",
     "LazyNormal",
     "MasonNormal",
@@ -49,6 +57,112 @@ local function fix_popup_colors()
   vim.api.nvim_set_hl(0, "BlinkCmpDocBorder",     { fg = border_fg, bg = popup_bg })
   vim.api.nvim_set_hl(0, "BlinkCmpMenuBorder",    { fg = border_fg, bg = popup_bg })
   vim.api.nvim_set_hl(0, "NotifyBorder",          { fg = border_fg, bg = popup_bg })
+end
+
+local float_backdrop = { buf = nil, win = nil }
+
+local float_backdrop_filetypes = {
+  lazy = true,
+  mason = true,
+  TelescopePrompt = true,
+}
+
+local function get_win_highlight(win)
+  return vim.api.nvim_get_option_value("winhighlight", { win = win })
+end
+
+local function is_float_backdrop_target(win)
+  if win == float_backdrop.win then return false end
+  if not vim.api.nvim_win_is_valid(win) then return false end
+
+  local config = vim.api.nvim_win_get_config(win)
+  if config.relative == "" then return false end
+
+  local buf = vim.api.nvim_win_get_buf(win)
+  if float_backdrop_filetypes[vim.bo[buf].filetype] then return true end
+
+  local winhighlight = get_win_highlight(win)
+  return winhighlight:find("LazyNormal", 1, true) ~= nil
+    or winhighlight:find("MasonNormal", 1, true) ~= nil
+    or winhighlight:find("Telescope", 1, true) ~= nil
+end
+
+local function close_float_backdrop()
+  local win = float_backdrop.win
+  local buf = float_backdrop.buf
+  float_backdrop.win = nil
+  float_backdrop.buf = nil
+
+  if win and vim.api.nvim_win_is_valid(win) then
+    pcall(vim.api.nvim_win_close, win, true)
+  end
+  if buf and vim.api.nvim_buf_is_valid(buf) then
+    pcall(vim.api.nvim_buf_delete, buf, { force = true })
+  end
+end
+
+local function open_float_backdrop(zindex)
+  local height = math.max(1, vim.o.lines)
+  local width = math.max(1, vim.o.columns)
+
+  if float_backdrop.win and vim.api.nvim_win_is_valid(float_backdrop.win) then
+    vim.api.nvim_win_set_config(float_backdrop.win, {
+      relative = "editor",
+      width = width,
+      height = height,
+      row = 0,
+      col = 0,
+      zindex = zindex,
+    })
+    return
+  end
+
+  local buf = vim.api.nvim_create_buf(false, true)
+  local win = vim.api.nvim_open_win(buf, false, {
+    relative = "editor",
+    width = width,
+    height = height,
+    row = 0,
+    col = 0,
+    style = "minimal",
+    focusable = false,
+    border = "none",
+    zindex = zindex,
+    noautocmd = true,
+  })
+
+  vim.bo[buf].bufhidden = "wipe"
+  vim.bo[buf].buftype = "nofile"
+  vim.bo[buf].filetype = "dms_float_backdrop"
+  vim.wo[win].winhighlight = "Normal:DmsFloatBackdrop"
+  vim.wo[win].winblend = 45
+
+  float_backdrop.buf = buf
+  float_backdrop.win = win
+end
+
+local function refresh_float_backdrop()
+  local zindex
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    if is_float_backdrop_target(win) then
+      local config = vim.api.nvim_win_get_config(win)
+      local target_zindex = config.zindex or 50
+      zindex = zindex and math.min(zindex, target_zindex - 1) or (target_zindex - 1)
+    end
+  end
+
+  if not zindex then
+    close_float_backdrop()
+    return
+  end
+
+  open_float_backdrop(math.max(1, zindex))
+end
+
+local function schedule_float_backdrop_refresh()
+  vim.schedule(function()
+    pcall(refresh_float_backdrop)
+  end)
 end
 
 local function fix_tabline_colors()
@@ -152,6 +266,12 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
+vim.api.nvim_create_autocmd({ "FileType", "WinNew", "WinClosed", "WinEnter", "BufWinEnter", "BufWinLeave", "VimResized" }, {
+  callback = function()
+    schedule_float_backdrop_refresh()
+  end,
+})
+
 -- Fix DMS runtime overrides after ColorScheme change (manual :colorscheme dms).
 vim.api.nvim_create_autocmd("ColorScheme", {
   pattern = "dms",
@@ -159,6 +279,7 @@ vim.api.nvim_create_autocmd("ColorScheme", {
     vim.defer_fn(function()
       fix_tabline_colors()
       fix_popup_colors()
+      refresh_float_backdrop()
     end, 100)
   end,
 })
