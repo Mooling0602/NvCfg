@@ -227,7 +227,7 @@ vim.api.nvim_create_autocmd("ColorScheme", {
     vim.defer_fn(function()
       fix_tabline_colors()
       fix_popup_colors()
-      refresh_float_backdrop()
+      refresh_dim_all()
     end, 100)
   end,
 })
