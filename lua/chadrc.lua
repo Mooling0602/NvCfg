@@ -8,12 +8,6 @@ M.base46 = {
     NvimTreeCursorLine = { bg = "black2" },
     NvimTreeEndOfBuffer = { fg = "darker_black", bg = "black" },
     NvimTreeWinSeparator = { fg = "darker_black", bg = "darker_black" },
-    -- Readable folder colors
-    NvimTreeFolderName = { fg = "#2e5a4c" },
-    NvimTreeFolderIcon = { fg = "#2e5a4c" },
-    NvimTreeEmptyFolderName = { fg = "#2e5a4c" },
-    NvimTreeRootFolder = { fg = "#1a6b5a", bold = true },
-    NvimTreeIndentMarker = { fg = "#c2ddc8" },
     -- Tabline background follows theme
     TbFill = { bg = "black2" },
     TbBufOn = { fg = "white", bg = "black" },
