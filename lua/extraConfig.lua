@@ -80,37 +80,48 @@ local function is_float_target(win)
     or winhighlight:find("Telescope", 1, true) ~= nil
 end
 
-local dimmed = false
+local backdrop_win = nil
+local backdrop_buf = nil
 
-local function refresh_dim_all()
-  local base46 = require("base46")
-  local theme = base46.theme_tables["dms"]
-  if not theme then return end
-  local c = theme.base_30
-
-  local has_target = false
-  for _, win in ipairs(vim.api.nvim_list_wins()) do
-    if is_float_target(win) then
-      has_target = true
-      break
-    end
-  end
-
-  if has_target and not dimmed then
-    vim.api.nvim_set_hl(0, "Normal", { bg = c.black2 })
-    vim.api.nvim_set_hl(0, "NormalNC", { bg = c.black2 })
-    dimmed = true
-  elseif not has_target and dimmed then
-    vim.api.nvim_set_hl(0, "Normal", { bg = "NONE" })
-    vim.api.nvim_set_hl(0, "NormalNC", { bg = "NONE" })
-    dimmed = false
-  end
+local function close_backdrop()
+  local w, b = backdrop_win, backdrop_buf
+  backdrop_win, backdrop_buf = nil, nil
+  if w and vim.api.nvim_win_is_valid(w) then pcall(vim.api.nvim_win_close, w, true) end
+  if b and vim.api.nvim_buf_is_valid(b) then pcall(vim.api.nvim_buf_delete, b, { force = true }) end
 end
 
-local function schedule_float_backdrop_refresh()
-  vim.schedule(function()
-    pcall(refresh_dim_all)
-  end)
+local function open_backdrop(zindex)
+  if backdrop_win and vim.api.nvim_win_is_valid(backdrop_win) then
+    vim.api.nvim_win_set_config(backdrop_win, {
+      relative = "editor", width = vim.o.columns, height = vim.o.lines,
+      row = 0, col = 0, zindex = zindex,
+    })
+    return
+  end
+  backdrop_buf = vim.api.nvim_create_buf(false, true)
+  backdrop_win = vim.api.nvim_open_win(backdrop_buf, false, {
+    relative = "editor",
+    width = vim.o.columns, height = vim.o.lines,
+    row = 0, col = 0,
+    style = "minimal", focusable = false,
+    zindex = zindex, noautocmd = true,
+  })
+  vim.bo[backdrop_buf].bufhidden = "wipe"
+  vim.bo[backdrop_buf].buftype = "nofile"
+  vim.bo[backdrop_buf].filetype = "dms_float_backdrop"
+  vim.wo[backdrop_win].winhighlight = "Normal:LazyBackdrop"
+  vim.wo[backdrop_win].winblend = 60
+end
+
+local function refresh_backdrop()
+  local zindex
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    if is_float_target(win) then
+      local tz = (vim.api.nvim_win_get_config(win).zindex or 50) - 1
+      zindex = zindex and math.min(zindex, tz) or tz
+    end
+  end
+  if not zindex then close_backdrop() else open_backdrop(math.max(1, zindex)) end
 end
 
 local function fix_tabline_colors()
@@ -216,7 +227,7 @@ vim.api.nvim_create_autocmd("FileType", {
 
 vim.api.nvim_create_autocmd({ "FileType", "WinNew", "WinClosed", "WinEnter", "BufWinEnter", "BufWinLeave", "VimResized" }, {
   callback = function()
-    schedule_float_backdrop_refresh()
+    refresh_backdrop()
   end,
 })
 
@@ -227,7 +238,7 @@ vim.api.nvim_create_autocmd("ColorScheme", {
     vim.defer_fn(function()
       fix_tabline_colors()
       fix_popup_colors()
-      refresh_dim_all()
+      refresh_backdrop()
     end, 100)
   end,
 })
