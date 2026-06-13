@@ -58,8 +58,6 @@ local function fix_popup_colors()
   vim.api.nvim_set_hl(0, "NotifyBorder",          { fg = border_fg, bg = popup_bg })
 end
 
-local float_backdrop = { buf = nil, win = nil }
-
 local float_backdrop_filetypes = {
   lazy = true,
   mason = true,
@@ -70,98 +68,48 @@ local function get_win_highlight(win)
   return vim.api.nvim_get_option_value("winhighlight", { win = win })
 end
 
-local function is_float_backdrop_target(win)
-  if win == float_backdrop.win then return false end
+local function is_float_target(win)
   if not vim.api.nvim_win_is_valid(win) then return false end
-
   local config = vim.api.nvim_win_get_config(win)
   if config.relative == "" then return false end
-
   local buf = vim.api.nvim_win_get_buf(win)
   if float_backdrop_filetypes[vim.bo[buf].filetype] then return true end
-
   local winhighlight = get_win_highlight(win)
   return winhighlight:find("LazyNormal", 1, true) ~= nil
     or winhighlight:find("MasonNormal", 1, true) ~= nil
     or winhighlight:find("Telescope", 1, true) ~= nil
 end
 
-local function close_float_backdrop()
-  local win = float_backdrop.win
-  local buf = float_backdrop.buf
-  float_backdrop.win = nil
-  float_backdrop.buf = nil
+local dimmed = false
 
-  if win and vim.api.nvim_win_is_valid(win) then
-    pcall(vim.api.nvim_win_close, win, true)
-  end
-  if buf and vim.api.nvim_buf_is_valid(buf) then
-    pcall(vim.api.nvim_buf_delete, buf, { force = true })
-  end
-end
+local function refresh_dim_all()
+  local base46 = require("base46")
+  local theme = base46.theme_tables["dms"]
+  if not theme then return end
+  local c = theme.base_30
 
-local function open_float_backdrop(zindex)
-  local height = math.max(1, vim.o.lines)
-  local width = math.max(1, vim.o.columns)
-
-  if float_backdrop.win and vim.api.nvim_win_is_valid(float_backdrop.win) then
-    vim.api.nvim_win_set_config(float_backdrop.win, {
-      relative = "editor",
-      width = width,
-      height = height,
-      row = 0,
-      col = 0,
-      zindex = zindex,
-    })
-    return
-  end
-
-  local buf = vim.api.nvim_create_buf(false, true)
-  local win = vim.api.nvim_open_win(buf, false, {
-    relative = "editor",
-    width = width,
-    height = height,
-    row = 0,
-    col = 0,
-    style = "minimal",
-    focusable = false,
-    border = "none",
-    zindex = zindex,
-    noautocmd = true,
-  })
-
-  vim.bo[buf].bufhidden = "wipe"
-  vim.bo[buf].buftype = "nofile"
-  vim.bo[buf].filetype = "dms_float_backdrop"
-  vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "" })
-  vim.wo[win].winhighlight = "Normal:DmsFloatBackdrop,EndOfBuffer:DmsFloatBackdrop"
-  vim.api.nvim_win_set_option(win, "winblend", 75)
-
-  float_backdrop.buf = buf
-  float_backdrop.win = win
-end
-
-local function refresh_float_backdrop()
-  local zindex
+  local has_target = false
   for _, win in ipairs(vim.api.nvim_list_wins()) do
-    if is_float_backdrop_target(win) then
-      local config = vim.api.nvim_win_get_config(win)
-      local target_zindex = config.zindex or 50
-      zindex = zindex and math.min(zindex, target_zindex - 1) or (target_zindex - 1)
+    if is_float_target(win) then
+      has_target = true
+      break
     end
   end
 
-  if not zindex then
-    close_float_backdrop()
-    return
+  if has_target and not dimmed then
+    vim.api.nvim_set_hl(0, "Normal", { bg = c.one_bg })
+    vim.api.nvim_set_hl(0, "NormalNC", { bg = c.one_bg })
+    dimmed = true
+  elseif not has_target and dimmed then
+    vim.api.nvim_set_hl(0, "Normal", { bg = "NONE" })
+    vim.api.nvim_set_hl(0, "NormalNC", { bg = "NONE" })
+    dimmed = false
   end
-
-  open_float_backdrop(math.max(1, zindex))
 end
 
 local function schedule_float_backdrop_refresh()
   vim.schedule(function()
-    pcall(refresh_float_backdrop)
+    pcall(refresh_dim_all)
   end)
 end
 
