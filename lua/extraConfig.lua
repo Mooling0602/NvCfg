@@ -97,8 +97,8 @@ local function refresh_dim_all()
   end
 
   if has_target and not dimmed then
-    vim.api.nvim_set_hl(0, "Normal", { bg = c.one_bg })
-    vim.api.nvim_set_hl(0, "NormalNC", { bg = c.one_bg })
+    vim.api.nvim_set_hl(0, "Normal", { bg = c.black2 })
+    vim.api.nvim_set_hl(0, "NormalNC", { bg = c.black2 })
     dimmed = true
   elseif not has_target and dimmed then
     vim.api.nvim_set_hl(0, "Normal", { bg = "NONE" })
