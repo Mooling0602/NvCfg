@@ -19,17 +19,36 @@ local function fix_popup_colors()
   local theme = base46.theme_tables["dms"]
   if not theme then return end
   local c = theme.base_30
+  local popup_bg = c.black
+  local border_fg = c.line
+
+  for _, group in ipairs({
+    "NormalFloat",
+    "LazyNormal",
+    "MasonNormal",
+    "Pmenu",
+    "CmpDoc",
+    "CmpPmenu",
+    "BlinkCmpDoc",
+    "BlinkCmpMenu",
+    "BlinkCmpSignatureHelp",
+    "TelescopeNormal",
+    "TelescopePrompt",
+    "TelescopeResults",
+    "TelescopePreview",
+  }) do
+    vim.api.nvim_set_hl(0, group, { bg = popup_bg })
+  end
 
   -- Floating window borders
-  vim.api.nvim_set_hl(0, "FloatBorder",           { fg = c.line, bg = "NONE" })
-  vim.api.nvim_set_hl(0, "TelescopeBorder",       { fg = c.line, bg = "NONE" })
-  vim.api.nvim_set_hl(0, "TelescopePromptBorder", { fg = c.line, bg = "NONE" })
-  vim.api.nvim_set_hl(0, "TelescopeResultsBorder",{ fg = c.line, bg = "NONE" })
-  vim.api.nvim_set_hl(0, "CmpDocBorder",          { fg = c.line, bg = "NONE" })
-  vim.api.nvim_set_hl(0, "BlinkCmpDocBorder",     { fg = c.line, bg = "NONE" })
-  vim.api.nvim_set_hl(0, "BlinkCmpMenuBorder",    { fg = c.line, bg = "NONE" })
-  vim.api.nvim_set_hl(0, "NotifyBorder",          { fg = c.line, bg = "NONE" })
-  vim.api.nvim_set_hl(0, "NormalFloat", { bg = c.black })
+  vim.api.nvim_set_hl(0, "FloatBorder",           { fg = border_fg, bg = popup_bg })
+  vim.api.nvim_set_hl(0, "TelescopeBorder",       { fg = border_fg, bg = popup_bg })
+  vim.api.nvim_set_hl(0, "TelescopePromptBorder", { fg = border_fg, bg = popup_bg })
+  vim.api.nvim_set_hl(0, "TelescopeResultsBorder",{ fg = border_fg, bg = popup_bg })
+  vim.api.nvim_set_hl(0, "CmpDocBorder",          { fg = border_fg, bg = popup_bg })
+  vim.api.nvim_set_hl(0, "BlinkCmpDocBorder",     { fg = border_fg, bg = popup_bg })
+  vim.api.nvim_set_hl(0, "BlinkCmpMenuBorder",    { fg = border_fg, bg = popup_bg })
+  vim.api.nvim_set_hl(0, "NotifyBorder",          { fg = border_fg, bg = popup_bg })
 end
 
 local function fix_tabline_colors()
@@ -75,7 +94,8 @@ end
 -- plugins (tabufline, nvimtree, treesitter, etc.) pick up DMS colors.
 local function regenerate_cache(name)
   local base46 = require("base46")
-  local highlights = base46.get_integration(name)
+  local ok, highlights = pcall(base46.get_integration, name)
+  if not ok then return end
   if not highlights then return end
   local cache = {}
   for hlname, hlopts in pairs(highlights) do
@@ -132,8 +152,13 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
--- Fix tabline: runs on ColorScheme change (manual :colorscheme dms).
+-- Fix DMS runtime overrides after ColorScheme change (manual :colorscheme dms).
 vim.api.nvim_create_autocmd("ColorScheme", {
   pattern = "dms",
-  callback = function() vim.defer_fn(fix_tabline_colors, 100) end,
+  callback = function()
+    vim.defer_fn(function()
+      fix_tabline_colors()
+      fix_popup_colors()
+    end, 100)
+  end,
 })
