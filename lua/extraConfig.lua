@@ -145,20 +145,6 @@ local function fix_tabline_colors()
   vim.api.nvim_set_hl(0, "TbCloseAllBufsBtn",   { fg = c.black, bg = c.red })
 end
 
-local function fix_nvimtree_colors()
-  local base46 = require("base46")
-  local theme = base46.theme_tables["dms"]
-  if not theme then return end
-  local c = theme.base_30
-
-  vim.api.nvim_set_hl(0, "NvimTreeNormal",    { bg = c.black })
-  vim.api.nvim_set_hl(0, "NvimTreeNormalNC",  { bg = c.black })
-  vim.api.nvim_set_hl(0, "NvimTreeCursorLine", { bg = c.black2 })
-  vim.api.nvim_set_hl(0, "NvimTreeEndOfBuffer", { fg = c.darker_black, bg = c.black })
-  vim.api.nvim_set_hl(0, "NvimTreeWinSeparator", { fg = c.line, bg = c.darker_black })
-  vim.api.nvim_set_hl(0, "NvimTreeIndentMarker", { fg = c.one_bg3 })
-end
-
 -- Write base46 integration highlights to cache file so lazy-loaded
 -- plugins (tabufline, nvimtree, treesitter, etc.) pick up DMS colors.
 local function regenerate_cache(name)
@@ -211,15 +197,6 @@ end
 
 -- Load DMS theme after startup delay
 vim.defer_fn(load_dms_theme, 1000)
-
--- Fix nvim-tree: runs AFTER nvim-tree lazy-loads (it overwrites our hl)
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = "NvimTree",
-  once = true,
-  callback = function()
-    vim.defer_fn(fix_nvimtree_colors, 100)
-  end,
-})
 
 vim.api.nvim_create_autocmd({ "FileType", "WinNew", "WinClosed", "WinEnter", "BufWinEnter", "BufWinLeave", "VimResized" }, {
   callback = function()
