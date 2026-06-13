@@ -14,6 +14,9 @@ local function dms_debug()
 end
 vim.api.nvim_create_user_command("DmsDebug", dms_debug, {})
 
+-- Pre-create backdrop highlight so it's ready before theme loads
+vim.api.nvim_set_hl(0, "DmsFloatBackdrop", { bg = "#000000", default = true })
+
 local function fix_popup_colors()
   local base46 = require("base46")
   local theme = base46.theme_tables["dms"]
@@ -130,8 +133,9 @@ local function open_float_backdrop(zindex)
   vim.bo[buf].bufhidden = "wipe"
   vim.bo[buf].buftype = "nofile"
   vim.bo[buf].filetype = "dms_float_backdrop"
-  vim.wo[win].winhighlight = "Normal:DmsFloatBackdrop"
-  vim.wo[win].winblend = 75
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "" })
+  vim.wo[win].winhighlight = "Normal:DmsFloatBackdrop,EndOfBuffer:DmsFloatBackdrop"
+  vim.api.nvim_win_set_option(win, "winblend", 75)
 
   float_backdrop.buf = buf
   float_backdrop.win = win
