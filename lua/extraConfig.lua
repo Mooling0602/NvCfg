@@ -22,13 +22,9 @@ local function fix_popup_colors()
   local popup_bg = c.black
   local border_fg = c.line
 
-  for _, group in ipairs({
-    "DmsFloatBackdrop",
-    "LazyBackdrop",
-    "MasonBackdrop",
-  }) do
-    vim.api.nvim_set_hl(0, group, { bg = "#000000" })
-  end
+  vim.api.nvim_set_hl(0, "DmsFloatBackdrop", { bg = c.darker_black })
+  vim.api.nvim_set_hl(0, "LazyBackdrop", { bg = "#000000" })
+  vim.api.nvim_set_hl(0, "MasonBackdrop", { bg = "#000000" })
 
   for _, group in ipairs({
     "NormalFloat",
@@ -135,7 +131,7 @@ local function open_float_backdrop(zindex)
   vim.bo[buf].buftype = "nofile"
   vim.bo[buf].filetype = "dms_float_backdrop"
   vim.wo[win].winhighlight = "Normal:DmsFloatBackdrop"
-  vim.wo[win].winblend = 45
+  vim.wo[win].winblend = 65
 
   float_backdrop.buf = buf
   float_backdrop.win = win
